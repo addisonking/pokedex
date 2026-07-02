@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
+import { toast } from "sonner"
 import { Filters } from "../components/Filters"
 import { PokemonGrid } from "../components/PokemonGrid"
 import { PokemonList } from "../components/PokemonList"
@@ -7,6 +8,7 @@ import { ProgressBar } from "../components/ProgressBar"
 import { GAMES_BY_ID, GEN_CAP, POKEMON_BY_ID, VERSION_LABELS } from "../data"
 import { cn } from "../lib/cn"
 import { countCaught } from "../lib/progress"
+import { importSave } from "../lib/save-parser"
 import { serebiiLocationUrl } from "../lib/serebii"
 import { useProgress } from "../lib/storage"
 import type {
@@ -100,9 +102,10 @@ function buildEntries(
 
 export function PlaythroughTracker() {
   const { id = "" } = useParams()
-  const { playthroughs, progress, setMode, completeSetup, cycle, bulkSet } = useProgress()
+  const { playthroughs, progress, setMode, completeSetup, cycle, bulkSet, loadSave } = useProgress()
   const playthrough = playthroughs.find((p) => p.id === id)
   const game = playthrough ? GAMES_BY_ID.get(playthrough.gameId) : undefined
+  const saveRef = useRef<HTMLInputElement>(null)
 
   const [search, setSearch] = useState("")
   const [type, setType] = useState("")
@@ -127,7 +130,7 @@ export function PlaythroughTracker() {
     return (
       <div className="p-8">
         Playthrough not found.{" "}
-        <Link to="/" className="text-sky-400">
+        <Link to="/" className="text-brand">
           Back home
         </Link>
       </div>
@@ -181,6 +184,31 @@ export function PlaythroughTracker() {
     flashRangeMsg(`Marked ${ids.length} shown as ${s === 2 ? "caught" : "seen"}.`)
   }
 
+  const handleSaveImport = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = importSave(reader.result as ArrayBuffer)
+      if (!result) {
+        toast.error(
+          "Couldn't read this save. Supported: R/B/Y, G/S/C, RSE, FRLG, DPPt, HGSS, BW, B2W2",
+        )
+        return
+      }
+      if (result.gameId !== playthrough.gameId) {
+        toast.error(
+          `This save is for ${result.name}, not ${game?.description ?? playthrough.gameId}.`,
+        )
+        return
+      }
+      loadSave(playthrough.id, result.seen, result.caught)
+      if (!playthrough.setupDone) completeSetup(playthrough.id)
+      toast.success(
+        `Updated dex from ${file.name}: ${result.caught.length} caught, ${result.seen.length} seen`,
+      )
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
   const showTabs = game.dex.length !== cap
   const numberLabel = dexView === "regional" ? "regional" : "national"
   const regionalZeroBased = dexView === "regional" && game.dex[0]?.r === 0
@@ -189,51 +217,81 @@ export function PlaythroughTracker() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-4">
-        <Link to="/" className="text-sm text-white/40 hover:text-white/70">
+        <Link to="/" className="text-sm text-white/40 hover:text-brand">
           ← All games
         </Link>
         <div className="mt-1 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">{playthrough.name}</h1>
-            <p className="text-sm text-white/50">
+            <h1 className="font-display text-2xl font-extrabold tracking-tight">
+              {playthrough.name}
+            </h1>
+            <p className="mt-0.5 flex items-center gap-2 text-sm text-white/50">
+              <span className="rounded bg-brand/15 px-1.5 py-0.5 font-display text-[11px] font-semibold text-brand/90">
+                GEN {game.gen}
+              </span>
               {VERSION_LABELS[playthrough.version]} · {game.description}
             </p>
           </div>
-          <div className="flex overflow-hidden rounded border border-white/10">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => handleModeChange("caught")}
-              className={cn(
-                "px-3 py-1.5 text-sm transition",
-                mode === "caught" ? "bg-sky-600 text-white" : "bg-white/5 hover:bg-white/10",
-              )}
+              onClick={() => saveRef.current?.click()}
+              className="rounded border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80 hover:bg-white/10"
             >
-              Caught only
+              Import .sav
             </button>
-            <button
-              type="button"
-              onClick={() => handleModeChange("seen")}
-              className={cn(
-                "px-3 py-1.5 text-sm transition",
-                mode === "seen" ? "bg-sky-600 text-white" : "bg-white/5 hover:bg-white/10",
-              )}
-            >
-              Seen + caught
-            </button>
+            <div className="flex overflow-hidden rounded border border-white/10">
+              <button
+                type="button"
+                onClick={() => handleModeChange("caught")}
+                className={cn(
+                  "px-3 py-1.5 text-sm transition",
+                  mode === "caught"
+                    ? "bg-brand text-brand-foreground shadow-inner"
+                    : "bg-white/5 hover:bg-white/10",
+                )}
+              >
+                Caught only
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange("seen")}
+                className={cn(
+                  "px-3 py-1.5 text-sm transition",
+                  mode === "seen"
+                    ? "bg-brand text-brand-foreground shadow-inner"
+                    : "bg-white/5 hover:bg-white/10",
+                )}
+              >
+                Seen + caught
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
+      <input
+        ref={saveRef}
+        type="file"
+        accept=".sav,application/octet-stream"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) handleSaveImport(f)
+          e.target.value = ""
+        }}
+      />
+
       {!playthrough.setupDone && (
-        <div className="mb-4 rounded-lg border border-sky-500/30 bg-sky-500/10 p-3">
+        <div className="mb-4 rounded-lg border border-brand/30 bg-brand/10 p-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-sky-100">
+            <p className="text-sm text-brand-foreground/90">
               Setup mode — mark everything you've already seen/caught in this save.
             </p>
             <button
               type="button"
               onClick={() => completeSetup(playthrough.id)}
-              className="rounded bg-sky-600 px-3 py-1.5 text-sm text-white hover:bg-sky-500"
+              className="rounded bg-brand px-3 py-1.5 text-sm text-brand-foreground hover:bg-brand/90"
             >
               Done
             </button>
@@ -246,7 +304,7 @@ export function PlaythroughTracker() {
                 if (e.key === "Enter") applyRange()
               }}
               placeholder={`e.g. ${rangeStart}-50, 63, 120-151 (${numberLabel} #s)`}
-              className="min-w-0 flex-1 rounded border border-white/10 bg-[#16191f] px-3 py-1.5 text-sm outline-none placeholder:text-white/30 focus:border-sky-500/60"
+              className="min-w-0 flex-1 rounded border border-white/10 bg-surface px-3 py-1.5 text-sm outline-none placeholder:text-white/30 focus:border-brand/60"
             />
             {mode === "seen" && (
               <div className="flex overflow-hidden rounded border border-white/10">
@@ -299,7 +357,7 @@ export function PlaythroughTracker() {
                 Mark all shown as seen
               </button>
             )}
-            {rangeMsg && <span className="text-xs text-sky-200">{rangeMsg}</span>}
+            {rangeMsg && <span className="text-xs text-brand/90">{rangeMsg}</span>}
           </div>
         </div>
       )}

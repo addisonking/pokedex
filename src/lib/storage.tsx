@@ -68,6 +68,7 @@ type Ctx = {
   completeSetup: (id: string) => void
   cycle: (playthroughId: string, pokemonId: number) => void
   bulkSet: (playthroughId: string, pokemonIds: number[], status: CatchStatus) => void
+  loadSave: (playthroughId: string, seen: number[], caught: number[]) => void
   exportJson: () => string
   importJson: (text: string) => boolean
   reset: () => void
@@ -168,6 +169,23 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const loadSave = useCallback((playthroughId: string, seen: number[], caught: number[]) => {
+    setStore((s) => {
+      const pt = s.playthroughs.find((p) => p.id === playthroughId)
+      if (!pt) return s
+      const stamp = pt.setupDone ? { t: Date.now() } : {}
+      const state: TrackerState = {}
+      const caughtSet = new Set(caught)
+      for (const pid of seen) {
+        if (!caughtSet.has(pid)) state[pid] = { s: 1, ...stamp }
+      }
+      for (const pid of caught) {
+        state[pid] = { s: 2, ...stamp }
+      }
+      return { ...s, progress: { ...s.progress, [playthroughId]: state } }
+    })
+  }, [])
+
   const exportJson = useCallback(() => JSON.stringify(store, null, 2), [store])
 
   const importJson = useCallback((text: string) => {
@@ -193,6 +211,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       completeSetup,
       cycle,
       bulkSet,
+      loadSave,
       exportJson,
       importJson,
       reset,
@@ -205,6 +224,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       completeSetup,
       cycle,
       bulkSet,
+      loadSave,
       exportJson,
       importJson,
       reset,
