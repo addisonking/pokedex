@@ -9,21 +9,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install Tailscale
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
           tags: tag:ci
+          ping: ${{ secrets.HOMESERVER_IP }}
 
       - name: Deploy
         env:
           HOMESERVER_IP: ${{ secrets.HOMESERVER_IP }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          sudo apt-get install -y ncat > /dev/null 2>&1
           mkdir -p ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
-            -o ProxyCommand="ncat --proxy-type socks5 --proxy localhost:1055 %h %p" \
+            -o ProxyCommand="tailscale nc %h %p" \
             -i ~/.ssh/deploy_key addis@$HOMESERVER_IP '~/pokedex/deploy.sh'
