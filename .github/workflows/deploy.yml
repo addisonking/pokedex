@@ -15,15 +15,12 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
           tags: tag:ci
 
-      - name: Wait for Tailscale
+      - name: Deploy
+        env:
+          HOMESERVER_IP: ${{ secrets.HOMESERVER_IP }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          sleep 5
-          tailscale status
-
-      - name: Deploy to homeserver
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.HOMESERVER_IP }}
-          username: addis
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: ~/pokedex/deploy.sh
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key addis@$HOMESERVER_IP '~/pokedex/deploy.sh'
