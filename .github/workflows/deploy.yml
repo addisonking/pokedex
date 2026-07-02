@@ -8,28 +8,37 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Tailscale
-        uses: tailscale/github-action@v3
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
-          tags: tag:ci
-
-      - name: Debug Tailscale
-        run: |
-          tailscale status
-          tailscale ping $HOMESERVER_IP || true
-        env:
-          HOMESERVER_IP: ${{ secrets.HOMESERVER_IP }}
-
       - name: Deploy
         env:
+          TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
           HOMESERVER_IP: ${{ secrets.HOMESERVER_IP }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
+          set -e
+          # Install Tailscale
+          curl -fsSL https://pkgs.tailscale.com/stable/tailscale_1.82.0_amd64.tgz -o /tmp/ts.tgz
+          tar -C /tmp -xzf /tmp/ts.tgz
+          sudo mv /tmp/tailscale_1.82.0_amd64/tailscale /tmp/tailscale_1.82.0_amd64/tailscaled /usr/bin/
+
+          # Start daemon
+          sudo tailscaled --state=mem: 2>/tmp/tailscaled.log &
+          sleep 2
+          sudo tailscale status --json >/dev/null
+
+          # Connect
+          sudo tailscale up \
+            --authkey="${TS_OAUTH_SECRET}?preauthorized=true&ephemeral=true" \
+            --advertise-tags=tag:ci \
+            --hostname=github-ci \
+            --accept-routes
+
+          # Wait for connectivity
+          tailscale ping "$HOMESERVER_IP"
+
+          # SSH and deploy
           mkdir -p ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh -vvv -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
-            -o ProxyCommand="tailscale nc %h %p" \
+          ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
             -i ~/.ssh/deploy_key addis@$HOMESERVER_IP '~/pokedex/deploy.sh'
