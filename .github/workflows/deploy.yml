@@ -15,6 +15,11 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
           tags: tag:ci
 
+      - name: Wait for Tailscale
+        run: |
+          sleep 5
+          tailscale status
+
       - name: Deploy to homeserver
         uses: appleboy/ssh-action@v1
         with:
