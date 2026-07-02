@@ -21,7 +21,8 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=no -o ProxyCommand="tailscale nc %h %p" \
+          ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
+            -o ProxyCommand="tailscale nc %h %p" \
             -i ~/.ssh/deploy_key addis@$HOMESERVER_IP '~/pokedex/deploy.sh'
