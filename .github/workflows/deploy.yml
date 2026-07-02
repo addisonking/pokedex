@@ -1,0 +1,24 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-client-secret: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
+          tags: tag:ci
+
+      - name: Deploy to homeserver
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOMESERVER_IP }}
+          username: addis
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: ~/pokedex/deploy.sh
