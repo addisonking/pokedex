@@ -5,7 +5,7 @@ import { Filters } from "../components/Filters"
 import { PokemonGrid } from "../components/PokemonGrid"
 import { PokemonList } from "../components/PokemonList"
 import { ProgressBar } from "../components/ProgressBar"
-import { GAMES_BY_ID, GEN_CAP, POKEMON_BY_ID, VERSION_LABELS } from "../data"
+import { GAMES_BY_ID, GEN_CAP, MYTHICAL_IDS, POKEMON_BY_ID, VERSION_LABELS } from "../data"
 import { cn } from "../lib/cn"
 import { countCaught } from "../lib/progress"
 import { importSave } from "../lib/save-parser"
@@ -50,6 +50,7 @@ function buildEntries(
   status: FilterStatus,
   sort: SortKey,
   version: string,
+  hideMythical: boolean,
   state: TrackerState | undefined,
 ): GridEntry[] {
   if (!game) return []
@@ -66,6 +67,7 @@ function buildEntries(
   const out: GridEntry[] = []
   for (const { pokemon, regionalNumber } of source) {
     if (!pokemon) continue
+    if (hideMythical && MYTHICAL_IDS.has(pokemon.id)) continue
     if (type && !pokemon.types.includes(type)) continue
     const raw: CatchStatus = state?.[pokemon.id]?.s ?? 0
     const display: CatchStatus = mode === "caught" && raw === 1 ? 0 : raw
@@ -113,6 +115,7 @@ export function PlaythroughTracker() {
   const [dexView, setDexView] = useState<DexView>("regional")
   const [sort, setSort] = useState<SortKey>("dex")
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
+  const [hideMythical, setHideMythical] = useState(false)
   const [rangeText, setRangeText] = useState("")
   const [setupStatus, setSetupStatus] = useState<CatchStatus>(2)
   const [rangeMsg, setRangeMsg] = useState<string | null>(null)
@@ -122,8 +125,9 @@ export function PlaythroughTracker() {
   const version = playthrough?.version ?? ""
 
   const entries = useMemo(
-    () => buildEntries(game, dexView, mode, search, type, status, sort, version, state),
-    [game, dexView, mode, search, type, status, sort, version, state],
+    () =>
+      buildEntries(game, dexView, mode, search, type, status, sort, version, hideMythical, state),
+    [game, dexView, mode, search, type, status, sort, version, hideMythical, state],
   )
 
   if (!playthrough || !game) {
@@ -413,6 +417,8 @@ export function PlaythroughTracker() {
           onSort={setSort}
           viewMode={viewMode}
           onViewMode={setViewMode}
+          hideMythical={hideMythical}
+          onToggleMythical={() => setHideMythical((v) => !v)}
         />
       </div>
 

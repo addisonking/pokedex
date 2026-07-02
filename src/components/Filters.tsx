@@ -23,6 +23,8 @@ type Props = {
   onSort: (v: SortKey) => void
   viewMode: ViewMode
   onViewMode: (v: ViewMode) => void
+  hideMythical: boolean
+  onToggleMythical: () => void
 }
 
 const CAUGHT_STATUSES: { id: FilterStatus; label: string }[] = [
@@ -50,6 +52,8 @@ export function Filters({
   onSort,
   viewMode,
   onViewMode,
+  hideMythical,
+  onToggleMythical,
 }: Props) {
   const statuses = mode === "seen" ? SEEN_STATUSES : CAUGHT_STATUSES
   return (
@@ -99,6 +103,18 @@ export function Filters({
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={onToggleMythical}
+        className={cn(
+          "rounded border px-3 py-1.5 text-sm transition",
+          hideMythical
+            ? "border-sky-600 bg-sky-600/20 text-sky-300"
+            : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10",
+        )}
+      >
+        {hideMythical ? "Mythicals hidden" : "Show mythicals"}
+      </button>
       <ToggleGroup
         type="single"
         value={viewMode}

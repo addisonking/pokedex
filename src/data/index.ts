@@ -11,6 +11,8 @@ export const GAMES_BY_ID: Map<string, Game> = new Map(GAMES.map((g) => [g.id, g]
 
 export const GEN_CAP: Record<number, number> = { 1: 151, 2: 251, 3: 386, 4: 493, 5: 649 }
 
+export { MYTHICAL_IDS } from "./mythical"
+
 export const VERSION_LABELS: Record<string, string> = {
   red: "Red",
   blue: "Blue",
