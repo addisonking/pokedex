@@ -26,15 +26,24 @@ jobs:
           sleep 2
           sudo tailscale status --json >/dev/null
 
+          # Generate an auth key using the OAuth client
+          TOKEN=$(curl -s -X POST https://api.tailscale.com/api/v2/tailnet/-/keys \
+            -H "Authorization: Basic $(echo -n "${TS_OAUTH_CLIENT_ID}:${TS_OAUTH_SECRET}" | base64)" \
+            -H "Content-Type: application/json" \
+            -d '{"capabilities":{"devices":{"create":{"reusable":true,"ephemeral":true,"preauthorized":true,"tags":["tag:ci"]}}}}' \
+            | jq -r .key)
+
           # Connect
           sudo tailscale up \
-            --authkey="${TS_OAUTH_SECRET}?preauthorized=true&ephemeral=true" \
-            --advertise-tags=tag:ci \
+            --authkey="$TOKEN" \
             --hostname=github-ci \
             --accept-routes
 
           # Wait for connectivity
-          tailscale ping "$HOMESERVER_IP"
+          for i in $(seq 1 30); do
+            tailscale ping "$HOMESERVER_IP" && break
+            sleep 2
+          done
 
           # SSH and deploy
           mkdir -p ~/.ssh
