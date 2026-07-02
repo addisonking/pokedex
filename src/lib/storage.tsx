@@ -60,7 +60,12 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   const addPlaythrough = useCallback(
     (gameId: string, version: string, name: string) => {
-      const id = crypto.randomUUID()
+      const id =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : Array.from(crypto.getRandomValues(new Uint8Array(16)))
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join("")
       const now = Date.now()
       const pt: Playthrough = {
         id,
