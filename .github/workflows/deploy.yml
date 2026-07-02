@@ -4,50 +4,12 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: deploy
+
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Deploy
-        env:
-          TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
-          HOMESERVER_IP: ${{ secrets.HOMESERVER_IP }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-        run: |
-          set -e
-          # Install Tailscale
-          curl -fsSL https://pkgs.tailscale.com/stable/tailscale_1.82.0_amd64.tgz -o /tmp/ts.tgz
-          tar -C /tmp -xzf /tmp/ts.tgz
-          sudo mv /tmp/tailscale_1.82.0_amd64/tailscale /tmp/tailscale_1.82.0_amd64/tailscaled /usr/bin/
-
-          # Start daemon
-          sudo tailscaled --state=mem: 2>/tmp/tailscaled.log &
-          sleep 2
-          sudo tailscale status --json >/dev/null
-
-          # Generate an auth key using the OAuth client
-          TOKEN=$(curl -s -X POST https://api.tailscale.com/api/v2/tailnet/-/keys \
-            -H "Authorization: Basic $(echo -n "${TS_OAUTH_CLIENT_ID}:${TS_OAUTH_SECRET}" | base64)" \
-            -H "Content-Type: application/json" \
-            -d '{"capabilities":{"devices":{"create":{"reusable":true,"ephemeral":true,"preauthorized":true,"tags":["tag:ci"]}}}}' \
-            | jq -r .key)
-
-          # Connect
-          sudo tailscale up \
-            --authkey="$TOKEN" \
-            --hostname=github-ci \
-            --accept-routes
-
-          # Wait for connectivity
-          for i in $(seq 1 30); do
-            tailscale ping "$HOMESERVER_IP" && break
-            sleep 2
-          done
-
-          # SSH and deploy
-          mkdir -p ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
-            -i ~/.ssh/deploy_key addis@$HOMESERVER_IP '~/pokedex/deploy.sh'
+        run: ~/pokedex/deploy.sh
