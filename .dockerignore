@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+test-saves
+.git
+.env
+.env.local
+*.md
+supabase/volumes
+graphify-out
+.pi-subagents
+.DS_Store

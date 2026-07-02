@@ -17,25 +17,42 @@ Serebii links contextual to the game being tracked.
 ## Stack
 
 Vite + React 18 + TypeScript + Tailwind v4 + Biome. React Router (HashRouter, so
-static hosts work without SPA fallback config).
+static hosts work without SPA fallback config). Supabase (self-hosted Docker) for
+auth + database. shadcn/ui components.
+
+## Docker
+
+`docker-compose.yml` — trimmed Supabase stack (postgres, auth, rest, kong) + app
+(nginx serving built Vite static files). 5 containers total, ~1.5GB RAM.
+- `docker compose up -d` — start everything
+- App at `localhost:3000`, Supabase API at `localhost:8000`
+- `.env` file required (copy from `.env.example`)
+- `supabase/init.sql` — DB schema (playthroughs + dex_entries tables, RLS policies)
+- `supabase/kong.yml` — Kong API gateway config (routes /auth/v1 + /rest/v1)
+- `Dockerfile` — multi-stage: bun build → nginx
+- For hybrid dev: `docker compose up db auth rest kong` + `bun run dev`
+  (Vite reads `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` from `.env.local`)
+
+## Auth
+
+Supabase Auth (GoTrue) with email/password + anonymous auth. Email autoconfirm
+enabled by default (no SMTP needed). Anonymous users can upgrade to email/password
+via Settings → "Upgrade guest account". Sessions persisted by supabase-js.
+`src/lib/auth.tsx` — AuthProvider context (session, signUp, signIn,
+signInAnonymously, upgradeAnon, signOut). `src/pages/Login.tsx` — login/signup
+page with "Continue as guest" button. Protected routes redirect to `/login`.
 
 ## State
 
-Progress stored in `localStorage` under key `pokedex`. Shape (see `src/types.ts`):
+Progress stored in Supabase Postgres. Tables:
+- `playthroughs` — one row per save file (user_id, game_id, version, name, mode, setup_done)
+- `dex_entries` — sparse, only status 1|2 stored (playthrough_id, pokemon_id, status, changed_at)
+RLS enabled: users can only access their own data. `src/lib/db.ts` — data access
+layer (async CRUD via supabase-js). `src/lib/storage.tsx` — ProgressProvider wraps
+db.ts with optimistic updates, same `useProgress()` interface as before.
 
-```
-{
-  playthroughs: Playthrough[]   // one per save file
-  progress: Record<string, TrackerState>  // keyed by playthrough id
-}
-Playthrough = { id, gameId, version, name, mode: "caught"|"seen", createdAt, setupDone }
-TrackerState = Record<number, DexRecord>  // sparse; only s=1|2 entries stored
-DexRecord = { s: 0|1|2, t?: number }      // 0 unseen / 1 seen / 2 caught; t = last change ts
-```
-
-Modes: `seen` cycles 0→1→2→clear; `caught` toggles 0↔2 (seen entries render as
-unseen). `setupDone` flips after the setup banner's Done button — marks made
-before that carry no `t` (baseline). Export/import JSON via Settings menu on home.
+Migration: Settings → "Migrate from localStorage" reads old `localStorage.pokedex`
+and imports into Supabase. One-time, user-initiated.
 
 ## Save importing (gen 1-5)
 
