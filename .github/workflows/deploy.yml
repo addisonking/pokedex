@@ -18,5 +18,11 @@ jobs:
       - name: Deploy
         env:
           HOMESERVER_IP: ${{ secrets.HOMESERVER_IP }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
-          tailscale ssh addis@$HOMESERVER_IP '~/pokedex/deploy.sh'
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes \
+            -o ProxyCommand="tailscale nc --timeout=30s %h %p" \
+            -i ~/.ssh/deploy_key addis@$HOMESERVER_IP '~/pokedex/deploy.sh'
