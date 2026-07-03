@@ -30,7 +30,21 @@ static hosts work without SPA fallback config). shadcn/ui components. Tauri v2
 `dist/`. `tauri-plugin-opener` is registered; `src/lib/external-links.ts`
 intercepts `target="_blank"` clicks inside the Tauri webview and opens them in
 the system browser (webviews ignore `_blank` otherwise). No-op in a regular
-browser.
+browser. `tauri-plugin-updater` + `tauri-plugin-process` handle auto-updates:
+app checks `releases/latest/download/latest.json` on launch (native dialog via
+`dialog: true`) and Settings has a manual "Check for updates" button
+(`src/lib/updater.ts`). Updates are signed with a Tauri signing key — pubkey in
+`tauri.conf.json`, private key in GitHub secret `TAURI_SIGNING_PRIVATE_KEY`
+(password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`); local key at
+`~/.tauri/pokedex.key`.
+
+## Releases
+
+`.github/workflows/release.yml` — on tag push `v*`, builds macOS aarch64 +
+x86_64 via `tauri-apps/tauri-action`, signs bundles, publishes a GitHub release
+with `.app` + `.app.tar.gz` + `.sig` assets, and generates `latest.json` (the
+updater manifest). To release: bump `version` in `tauri.conf.json` + `package.json`
++ `src-tauri/Cargo.toml`, commit, then `git tag v0.X.Y && git push --tags`.
 
 ## State
 

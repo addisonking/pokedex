@@ -1,11 +1,14 @@
 import { useRef, useState } from "react"
+import { toast } from "sonner"
 import { useProgress } from "../lib/storage"
+import { checkForUpdate, downloadAndInstallUpdate } from "../lib/updater"
 
 export function Settings() {
   const { exportJson, importJson, reset } = useProgress()
   const [open, setOpen] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function flash(m: string) {
@@ -33,6 +36,30 @@ export function Settings() {
     }
     reader.readAsText(file)
     setOpen(false)
+  }
+
+  async function doUpdateCheck() {
+    setChecking(true)
+    try {
+      const info = await checkForUpdate()
+      if (!info) {
+        flash("Up to date.")
+        return
+      }
+      toast(`Update ${info.version} available`, {
+        description: info.body?.slice(0, 200),
+        duration: 8000,
+        action: {
+          label: "Install & restart",
+          onClick: () => downloadAndInstallUpdate().catch(() => toast.error("Update failed")),
+        },
+      })
+      setOpen(false)
+    } catch {
+      flash("Update check failed.")
+    } finally {
+      setChecking(false)
+    }
   }
 
   return (
@@ -75,6 +102,16 @@ export function Settings() {
               e.target.value = ""
             }}
           />
+          {"__TAURI_INTERNALS__" in window && (
+            <button
+              type="button"
+              onClick={doUpdateCheck}
+              disabled={checking}
+              className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-white/10 disabled:opacity-50"
+            >
+              {checking ? "Checking…" : "Check for updates"}
+            </button>
+          )}
           <div className="my-1 border-t border-white/10" />
           {confirmReset ? (
             <div className="flex items-center gap-1 px-2 py-1">
