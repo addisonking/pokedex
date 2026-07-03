@@ -33,10 +33,11 @@ the system browser (webviews ignore `_blank` otherwise). No-op in a regular
 browser. `tauri-plugin-updater` + `tauri-plugin-process` handle auto-updates:
 app checks `releases/latest/download/latest.json` on launch (native dialog via
 `dialog: true`) and Settings has a manual "Check for updates" button
-(`src/lib/updater.ts`). Updates are signed with a Tauri signing key — pubkey in
-`tauri.conf.json`, private key in GitHub secret `TAURI_SIGNING_PRIVATE_KEY`
-(password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`); local key at
-`~/.tauri/pokedex.key`.
+(`src/lib/updater.ts`). Repo must be **public** — the updater fetches release
+assets with no auth, so a private repo 404s. Updates are signed with a Tauri
+signing key — pubkey in `tauri.conf.json`, private key in GitHub secret
+`TAURI_SIGNING_PRIVATE_KEY` (password in `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`);
+local key at `~/.tauri/pokedex.key`.
 
 ## Releases
 
