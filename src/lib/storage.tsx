@@ -1,27 +1,74 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import type { CatchStatus, Playthrough, Store, TrackerMode, TrackerState } from "../types"
-import { useAuth } from "./auth"
-import {
-  bulkUpsertDexEntries,
-  completePlaythroughSetup,
-  createPlaythrough,
-  deletePlaythrough,
-  fetchAllDexEntries,
-  fetchPlaythroughs,
-  replaceDexEntries,
-  updatePlaythroughMode,
-  upsertDexEntry,
-} from "./db"
+
+const KEY = "pokedex"
 
 function emptyStore(): Store {
   return { playthroughs: [], progress: {} }
 }
 
+const MODES: TrackerMode[] = ["caught", "seen"]
+
+function isPlaythrough(v: unknown): v is Playthrough {
+  if (typeof v !== "object" || v === null) return false
+  const p = v as Record<string, unknown>
+  return (
+    typeof p.id === "string" &&
+    typeof p.gameId === "string" &&
+    typeof p.version === "string" &&
+    typeof p.name === "string" &&
+    typeof p.mode === "string" &&
+    (MODES as string[]).includes(p.mode) &&
+    typeof p.createdAt === "number" &&
+    typeof p.setupDone === "boolean"
+  )
+}
+
+function isTrackerState(v: unknown): v is TrackerState {
+  if (typeof v !== "object" || v === null) return false
+  for (const rec of Object.values(v as Record<string, unknown>)) {
+    if (typeof rec !== "object" || rec === null) return false
+    const r = rec as Record<string, unknown>
+    if (r.s !== 0 && r.s !== 1 && r.s !== 2) return false
+    if (r.t !== undefined && typeof r.t !== "number") return false
+  }
+  return true
+}
+
+function isValidStore(v: unknown): v is Store {
+  if (typeof v !== "object" || v === null) return false
+  const s = v as Record<string, unknown>
+  if (!Array.isArray(s.playthroughs) || !s.playthroughs.every(isPlaythrough)) return false
+  if (typeof s.progress !== "object" || s.progress === null) return false
+  for (const ts of Object.values(s.progress as Record<string, unknown>)) {
+    if (!isTrackerState(ts)) return false
+  }
+  return true
+}
+
+function load(): Store {
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (!raw) return emptyStore()
+    const parsed = JSON.parse(raw)
+    if (!isValidStore(parsed)) return emptyStore()
+    return parsed
+  } catch {
+    return emptyStore()
+  }
+}
+
+function newId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID()
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
 type Ctx = {
   playthroughs: Playthrough[]
   progress: Record<string, TrackerState>
-  loading: boolean
   addPlaythrough: (gameId: string, version: string, name: string) => string
   removePlaythrough: (id: string) => void
   setMode: (id: string, mode: TrackerMode) => void
@@ -37,58 +84,34 @@ type Ctx = {
 const C = createContext<Ctx | null>(null)
 
 export function ProgressProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  const [store, setStore] = useState<Store>(emptyStore())
-  const [loading, setLoading] = useState(true)
+  const [store, setStore] = useState<Store>(() => load())
 
   useEffect(() => {
-    if (!user) {
-      setStore(emptyStore())
-      setLoading(false)
-      return
+    try {
+      localStorage.setItem(KEY, JSON.stringify(store))
+    } catch {
+      // storage may be unavailable (private mode); ignore
     }
-    setLoading(true)
-    fetchPlaythroughs(user.id)
-      .then(async (playthroughs) => {
-        const ids = playthroughs.map((p) => p.id)
-        const progress = ids.length > 0 ? await fetchAllDexEntries(ids) : {}
-        setStore({ playthroughs, progress })
-      })
-      .catch((e) => console.error("Failed to load playthroughs:", e))
-      .finally(() => setLoading(false))
-  }, [user])
+  }, [store])
 
-  const addPlaythrough = useCallback(
-    (gameId: string, version: string, name: string) => {
-      const id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : Array.from(crypto.getRandomValues(new Uint8Array(16)))
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join("")
-      const now = Date.now()
-      const pt: Playthrough = {
-        id,
-        gameId,
-        version,
-        name,
-        mode: "seen",
-        createdAt: now,
-        setupDone: false,
-      }
-      setStore((s) => ({
-        playthroughs: [...s.playthroughs, pt],
-        progress: { ...s.progress, [id]: {} },
-      }))
-      if (user) {
-        createPlaythrough(user.id, gameId, version, name).catch((e) =>
-          console.error("Failed to create playthrough:", e),
-        )
-      }
-      return id
-    },
-    [user],
-  )
+  const addPlaythrough = useCallback((gameId: string, version: string, name: string) => {
+    const id = newId()
+    const now = Date.now()
+    const pt: Playthrough = {
+      id,
+      gameId,
+      version,
+      name,
+      mode: "seen",
+      createdAt: now,
+      setupDone: false,
+    }
+    setStore((s) => ({
+      playthroughs: [...s.playthroughs, pt],
+      progress: { ...s.progress, [id]: {} },
+    }))
+    return id
+  }, [])
 
   const removePlaythrough = useCallback((id: string) => {
     setStore((s) => {
@@ -99,7 +122,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         progress,
       }
     })
-    deletePlaythrough(id).catch((e) => console.error("Failed to delete playthrough:", e))
   }, [])
 
   const setMode = useCallback((id: string, mode: TrackerMode) => {
@@ -107,7 +129,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       ...s,
       playthroughs: s.playthroughs.map((p) => (p.id === id ? { ...p, mode } : p)),
     }))
-    updatePlaythroughMode(id, mode).catch((e) => console.error("Failed to update mode:", e))
   }, [])
 
   const completeSetup = useCallback((id: string) => {
@@ -115,7 +136,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       ...s,
       playthroughs: s.playthroughs.map((p) => (p.id === id ? { ...p, setupDone: true } : p)),
     }))
-    completePlaythroughSetup(id).catch((e) => console.error("Failed to complete setup:", e))
   }, [])
 
   const cycle = useCallback((playthroughId: string, pokemonId: number) => {
@@ -125,30 +145,16 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       const state: TrackerState = { ...(s.progress[playthroughId] ?? {}) }
       const cur = state[pokemonId]?.s ?? 0
       const stamp = pt.setupDone ? { t: Date.now() } : {}
-      let newStatus: CatchStatus = 0
       if (pt.mode === "caught") {
-        if (cur === 2) {
-          delete state[pokemonId]
-          newStatus = 0
-        } else {
-          state[pokemonId] = { s: 2, ...stamp }
-          newStatus = 2
-        }
+        // caught mode: 2 → delete, else → 2 (preserve any stored seen on others)
+        if (cur === 2) delete state[pokemonId]
+        else state[pokemonId] = { s: 2, ...stamp }
       } else {
-        if (cur === 0) {
-          state[pokemonId] = { s: 1, ...stamp }
-          newStatus = 1
-        } else if (cur === 1) {
-          state[pokemonId] = { s: 2, ...stamp }
-          newStatus = 2
-        } else {
-          delete state[pokemonId]
-          newStatus = 0
-        }
+        // seen mode: 0 → 1 → 2 → delete
+        if (cur === 0) state[pokemonId] = { s: 1, ...stamp }
+        else if (cur === 1) state[pokemonId] = { s: 2, ...stamp }
+        else delete state[pokemonId]
       }
-      upsertDexEntry(playthroughId, pokemonId, newStatus, pt.setupDone).catch((e) =>
-        console.error("Failed to upsert dex entry:", e),
-      )
       return { ...s, progress: { ...s.progress, [playthroughId]: state } }
     })
   }, [])
@@ -164,9 +170,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           if (status === 0) delete state[pid]
           else state[pid] = { s: status, ...stamp }
         }
-        bulkUpsertDexEntries(playthroughId, pokemonIds, status, pt.setupDone).catch((e) =>
-          console.error("Failed to bulk upsert:", e),
-        )
         return { ...s, progress: { ...s.progress, [playthroughId]: state } }
       })
     },
@@ -186,9 +189,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       for (const pid of caught) {
         state[pid] = { s: 2, ...stamp }
       }
-      replaceDexEntries(playthroughId, seen, caught, pt.setupDone).catch((e) =>
-        console.error("Failed to replace dex entries:", e),
-      )
       return { ...s, progress: { ...s.progress, [playthroughId]: state } }
     })
   }, [])
@@ -198,6 +198,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const importJson = useCallback((text: string) => {
     try {
       const parsed = JSON.parse(text)
+      if (!isValidStore(parsed)) return false
       setStore(parsed)
       return true
     } catch {
@@ -211,7 +212,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     () => ({
       playthroughs: store.playthroughs,
       progress: store.progress,
-      loading,
       addPlaythrough,
       removePlaythrough,
       setMode,
@@ -225,7 +225,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     }),
     [
       store,
-      loading,
       addPlaythrough,
       removePlaythrough,
       setMode,

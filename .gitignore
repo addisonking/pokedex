@@ -9,4 +9,3 @@ dist-ssr
 !.vscode/extensions.json
 .env
 test-saves/
-supabase/volumes/

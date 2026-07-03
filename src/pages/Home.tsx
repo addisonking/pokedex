@@ -10,15 +10,9 @@ import { useProgress } from "../lib/storage"
 
 export function Home() {
   const navigate = useNavigate()
-  const { playthroughs, addPlaythrough, bulkSet, completeSetup, loading } = useProgress()
+  const { playthroughs, addPlaythrough, bulkSet, completeSetup } = useProgress()
   const [adding, setAdding] = useState(false)
   const saveRef = useRef<HTMLInputElement>(null)
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-white/40">Loading...</div>
-    )
-  }
 
   function handleSaveImport(file: File) {
     const reader = new FileReader()
@@ -125,7 +119,7 @@ export function Home() {
       />
 
       <footer className="mt-10 text-center text-xs text-white/30">
-        Data from PokeAPI. Per-Pokémon details on Serebii. Progress synced to your account.
+        Data from PokeAPI. Per-Pokémon details on Serebii. Progress stored on this device.
       </footer>
 
       {adding && <AddGameModal onClose={() => setAdding(false)} />}

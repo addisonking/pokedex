@@ -1,7 +1,8 @@
 # Pokedex Tracker
 
-Web app to track regional & national Pokédex progress for gens 1–5. Per-Pokémon
-Serebii links contextual to the game being tracked.
+Local-first app to track regional & national Pokédex progress for gens 1–5.
+Per-Pokémon Serebii links contextual to the game being tracked. Runs as a web
+app or a Tauri desktop app; all progress lives in localStorage on the device.
 
 ## Commands
 
@@ -11,48 +12,33 @@ Serebii links contextual to the game being tracked.
 - `bun run typecheck` — `tsc --noEmit`
 - `bun run lint` — `biome check src`
 - `bun run format` — `biome format --write src`
+- `bun run tauri dev` — run desktop app (starts Vite dev server automatically)
+- `bun run tauri build` — build + bundle desktop app (requires Rust)
 - `bun run generate` — regenerate `src/data/*.json` from PokeAPI (649 calls + 8 regional dexes)
 - `bun run sprites` — download sprites 1–649 into `public/sprites/` from PokeAPI sprites repo (idempotent)
 
 ## Stack
 
 Vite + React 18 + TypeScript + Tailwind v4 + Biome. React Router (HashRouter, so
-static hosts work without SPA fallback config). Supabase (self-hosted Docker) for
-auth + database. shadcn/ui components.
+static hosts work without SPA fallback config). shadcn/ui components. Tauri v2
+(`src-tauri/`) wraps the same build for desktop.
 
-## Docker
+## Tauri
 
-`docker-compose.yml` — trimmed Supabase stack (postgres, auth, rest, kong) + app
-(nginx serving built Vite static files). 5 containers total, ~1.5GB RAM.
-- `docker compose up -d` — start everything
-- App at `localhost:3000`, Supabase API at `localhost:8000`
-- `.env` file required (copy from `.env.example`)
-- `supabase/init.sql` — DB schema (playthroughs + dex_entries tables, RLS policies)
-- `supabase/kong.yml` — Kong API gateway config (routes /auth/v1 + /rest/v1)
-- `Dockerfile` — multi-stage: bun build → nginx
-- For hybrid dev: `docker compose up db auth rest kong` + `bun run dev`
-  (Vite reads `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` from `.env.local`)
-
-## Auth
-
-Supabase Auth (GoTrue) with email/password + anonymous auth. Email autoconfirm
-enabled by default (no SMTP needed). Anonymous users can upgrade to email/password
-via Settings → "Upgrade guest account". Sessions persisted by supabase-js.
-`src/lib/auth.tsx` — AuthProvider context (session, signUp, signIn,
-signInAnonymously, upgradeAnon, signOut). `src/pages/Login.tsx` — login/signup
-page with "Continue as guest" button. Protected routes redirect to `/login`.
+`src-tauri/tauri.conf.json` — dev uses Vite at `localhost:5173`, release bundles
+`dist/`. `tauri-plugin-opener` is registered; `src/lib/external-links.ts`
+intercepts `target="_blank"` clicks inside the Tauri webview and opens them in
+the system browser (webviews ignore `_blank` otherwise). No-op in a regular
+browser.
 
 ## State
 
-Progress stored in Supabase Postgres. Tables:
-- `playthroughs` — one row per save file (user_id, game_id, version, name, mode, setup_done)
-- `dex_entries` — sparse, only status 1|2 stored (playthrough_id, pokemon_id, status, changed_at)
-RLS enabled: users can only access their own data. `src/lib/db.ts` — data access
-layer (async CRUD via supabase-js). `src/lib/storage.tsx` — ProgressProvider wraps
-db.ts with optimistic updates, same `useProgress()` interface as before.
-
-Migration: Settings → "Migrate from localStorage" reads old `localStorage.pokedex`
-and imports into Supabase. One-time, user-initiated.
+All progress in `localStorage` under key `pokedex`: `{ playthroughs, progress }`.
+- `playthroughs` — one per save file (id, gameId, version, name, mode, createdAt, setupDone)
+- `progress` — per playthrough id, sparse map of pokemonId → `{ s: 1|2, t?: timestamp }`
+`src/lib/storage.tsx` — ProgressProvider context, validates on load, persists on
+every change. `useProgress()` hook. Settings menu has JSON export/import for
+backup and a full reset.
 
 ## Save importing (gen 1-5)
 
