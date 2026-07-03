@@ -41,11 +41,26 @@ local key at `~/.tauri/pokedex.key`.
 
 ## Releases
 
-`.github/workflows/release.yml` — on tag push `v*`, builds macOS aarch64 +
-x86_64 via `tauri-apps/tauri-action`, signs bundles, publishes a GitHub release
-with `.app` + `.app.tar.gz` + `.sig` assets, and generates `latest.json` (the
-updater manifest). To release: bump `version` in `tauri.conf.json` + `package.json`
-+ `src-tauri/Cargo.toml`, commit, then `git tag v0.X.Y && git push --tags`.
+`.github/workflows/release.yml` — on tag push `v*`, builds macOS aarch64 via
+`tauri-apps/tauri-action`, signs bundles, publishes a GitHub release with `.app`
++ `.app.tar.gz` + `.sig` assets, and generates `latest.json` (the updater
+manifest). Repo must stay public or the updater can't fetch assets.
+
+### Releasing (agents: do this automatically when asked to release)
+
+1. Bump `version` in **all three** files — they must match:
+   - `package.json`
+   - `src-tauri/tauri.conf.json`
+   - `src-tauri/Cargo.toml`
+2. Commit: `chore: bump version to X.Y.Z`
+3. Tag + push: `git tag vX.Y.Z && git push origin main && git push origin vX.Y.Z`
+4. Wait for the release workflow to finish (`gh run watch`), then verify the
+   release has `latest.json` + the `.app.tar.gz` + `.sig` assets.
+
+Use semver: patch for fixes, minor for features, major for breaking changes.
+Don't skip versions — the updater compares the running app's version against
+`latest.json`'s `version` field, so each release must be strictly higher than
+the last.
 
 ## State
 
