@@ -4,9 +4,10 @@ import { PokemonCard } from "./PokemonCard"
 type Props = {
   entries: GridEntry[]
   onCycle: (pokemonId: number) => void
+  onLocation: (pokemonId: number) => void
 }
 
-export function PokemonGrid({ entries, onCycle }: Props) {
+export function PokemonGrid({ entries, onCycle, onLocation }: Props) {
   if (entries.length === 0) {
     return <div className="py-10 text-center text-white/40">No Pokémon match your filters.</div>
   }
@@ -18,8 +19,8 @@ export function PokemonGrid({ entries, onCycle }: Props) {
           pokemon={e.pokemon}
           regionalNumber={e.regionalNumber}
           status={e.status}
-          serebiiUrl={e.serebiiUrl}
           onCycle={() => onCycle(e.pokemon.id)}
+          onLocation={() => onLocation(e.pokemon.id)}
         />
       ))}
     </div>

@@ -44,9 +44,27 @@ export type Store = {
 
 export type FilterStatus = "all" | "caught" | "uncaught" | "seen" | "unseen"
 
+export type EncounterRow = {
+  loc: string
+  method: string
+  chance: number
+  min: number
+  max: number
+  cond?: string[]
+}
+
+export type VersionEncounters = Record<string, EncounterRow[]>
+
+export type Evolution = {
+  from: number
+  trigger: string
+  level?: number
+  item?: string
+  note?: string
+}
+
 export type GridEntry = {
   pokemon: Pokemon
   regionalNumber?: number
-  serebiiUrl: string
   status: CatchStatus // mode-adjusted for display (seen→0 in caught mode)
 }

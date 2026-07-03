@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { toast } from "sonner"
+import { EncounterDialog } from "../components/EncounterDialog"
 import { Filters } from "../components/Filters"
 import { PokemonGrid } from "../components/PokemonGrid"
 import { PokemonList } from "../components/PokemonList"
@@ -9,7 +10,6 @@ import { GAMES_BY_ID, GEN_CAP, MYTHICAL_IDS, POKEMON_BY_ID, VERSION_LABELS } fro
 import { cn } from "../lib/cn"
 import { countCaught } from "../lib/progress"
 import { importSave } from "../lib/save-parser"
-import { serebiiLocationUrl } from "../lib/serebii"
 import { useProgress } from "../lib/storage"
 import type {
   CatchStatus,
@@ -49,7 +49,6 @@ function buildEntries(
   type: string,
   status: FilterStatus,
   sort: SortKey,
-  version: string,
   hideMythical: boolean,
   state: TrackerState | undefined,
 ): GridEntry[] {
@@ -84,7 +83,6 @@ function buildEntries(
     out.push({
       pokemon,
       regionalNumber,
-      serebiiUrl: serebiiLocationUrl(game, pokemon.id, version),
       status: display,
     })
   }
@@ -119,15 +117,15 @@ export function PlaythroughTracker() {
   const [rangeText, setRangeText] = useState("")
   const [setupStatus, setSetupStatus] = useState<CatchStatus>(2)
   const [rangeMsg, setRangeMsg] = useState<string | null>(null)
+  const [locationEntry, setLocationEntry] = useState<GridEntry | null>(null)
 
   const state = playthrough ? progress[playthrough.id] : undefined
   const mode: TrackerMode = playthrough?.mode ?? "seen"
   const version = playthrough?.version ?? ""
 
   const entries = useMemo(
-    () =>
-      buildEntries(game, dexView, mode, search, type, status, sort, version, hideMythical, state),
-    [game, dexView, mode, search, type, status, sort, version, hideMythical, state],
+    () => buildEntries(game, dexView, mode, search, type, status, sort, hideMythical, state),
+    [game, dexView, mode, search, type, status, sort, hideMythical, state],
   )
 
   if (!playthrough || !game) {
@@ -423,13 +421,34 @@ export function PlaythroughTracker() {
       </div>
 
       {viewMode === "list" ? (
-        <PokemonList entries={entries} onCycle={(pid) => cycle(playthrough.id, pid)} />
+        <PokemonList
+          entries={entries}
+          onCycle={(pid) => cycle(playthrough.id, pid)}
+          onLocation={(pid) => {
+            const e = entries.find((x) => x.pokemon.id === pid)
+            if (e) setLocationEntry(e)
+          }}
+        />
       ) : (
-        <PokemonGrid entries={entries} onCycle={(pid) => cycle(playthrough.id, pid)} />
+        <PokemonGrid
+          entries={entries}
+          onCycle={(pid) => cycle(playthrough.id, pid)}
+          onLocation={(pid) => {
+            const e = entries.find((x) => x.pokemon.id === pid)
+            if (e) setLocationEntry(e)
+          }}
+        />
       )}
 
+      <EncounterDialog
+        game={game}
+        version={version}
+        entry={locationEntry}
+        onClose={() => setLocationEntry(null)}
+      />
+
       <p className="mt-6 text-xs text-white/30">
-        Tracking {activeIds.length} Pokémon · Serebii links open in a new tab.
+        Tracking {activeIds.length} Pokémon · click Location for in-app encounter details.
       </p>
     </div>
   )

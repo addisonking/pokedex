@@ -5,6 +5,7 @@ import type { GridEntry } from "../types"
 type Props = {
   entries: GridEntry[]
   onCycle: (pokemonId: number) => void
+  onLocation: (pokemonId: number) => void
 }
 
 function cap(s: string): string {
@@ -13,7 +14,7 @@ function cap(s: string): string {
 
 const STATUS_LABEL: Record<number, string> = { 0: "Not seen", 1: "Seen", 2: "Caught" }
 
-export function PokemonList({ entries, onCycle }: Props) {
+export function PokemonList({ entries, onCycle, onLocation }: Props) {
   if (entries.length === 0) {
     return (
       <div className="py-10 text-center text-muted-foreground">No Pokémon match your filters.</div>
@@ -57,15 +58,16 @@ export function PokemonList({ entries, onCycle }: Props) {
                 ))}
               </span>
             </button>
-            <a
-              href={e.serebiiUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => event.stopPropagation()}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                onLocation(e.pokemon.id)
+              }}
               className="shrink-0 text-xs text-sky-400/80 hover:text-sky-300"
             >
-              Location ↗
-            </a>
+              Location
+            </button>
           </div>
         )
       })}

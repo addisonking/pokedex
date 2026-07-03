@@ -6,8 +6,8 @@ type Props = {
   pokemon: Pokemon
   regionalNumber?: number
   status: CatchStatus
-  serebiiUrl: string
   onCycle: () => void
+  onLocation: () => void
 }
 
 function cap(s: string): string {
@@ -16,7 +16,7 @@ function cap(s: string): string {
 
 const STATUS_LABEL: Record<CatchStatus, string> = { 0: "Not seen", 1: "Seen", 2: "Caught" }
 
-export function PokemonCard({ pokemon, regionalNumber, status, serebiiUrl, onCycle }: Props) {
+export function PokemonCard({ pokemon, regionalNumber, status, onCycle, onLocation }: Props) {
   const num = regionalNumber != null ? regionalNumber : pokemon.id
   const label = `${cap(pokemon.name)} #${num} — ${STATUS_LABEL[status]}`
   return (
@@ -98,14 +98,13 @@ export function PokemonCard({ pokemon, regionalNumber, status, serebiiUrl, onCyc
           />
         ))}
       </div>
-      <a
-        href={serebiiUrl}
-        target="_blank"
-        rel="noreferrer"
+      <button
+        type="button"
+        onClick={onLocation}
         className="relative z-20 mt-1 text-[10px] text-sky-400/80 hover:text-sky-300"
       >
-        Location ↗
-      </a>
+        Location
+      </button>
     </div>
   )
 }
