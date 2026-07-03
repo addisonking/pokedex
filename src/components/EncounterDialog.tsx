@@ -5,7 +5,6 @@ import { serebiiLocationUrl } from "../lib/serebii"
 import type { EncounterRow, Game, GridEntry, VersionEncounters } from "../types"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -110,25 +109,17 @@ export function EncounterDialog({ game, version, entry, onClose }: Props) {
             )}
           </div>
 
-          <DialogFooter className="border-t pt-3">
+          <DialogFooter className="border-t pt-3 sm:justify-start">
             {pokemonId != null && (
               <a
                 href={serebiiLocationUrl(game, pokemonId, version)}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-sky-400/80 hover:text-sky-300"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
                 Serebii ↗
               </a>
             )}
-            <DialogClose asChild>
-              <button
-                type="button"
-                className="rounded border border-border bg-card px-3 py-1.5 text-sm hover:bg-accent"
-              >
-                Close
-              </button>
-            </DialogClose>
           </DialogFooter>
         </DialogContent>
       </DialogPortal>

@@ -447,9 +447,7 @@ export function PlaythroughTracker() {
         onClose={() => setLocationEntry(null)}
       />
 
-      <p className="mt-6 text-xs text-white/30">
-        Tracking {activeIds.length} Pokémon · click Location for in-app encounter details.
-      </p>
+      <p className="mt-6 text-xs text-white/30">Tracking {activeIds.length} Pokémon</p>
     </div>
   )
 }

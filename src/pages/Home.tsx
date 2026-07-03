@@ -119,7 +119,7 @@ export function Home() {
       />
 
       <footer className="mt-10 text-center text-xs text-white/30">
-        Data from PokeAPI. Per-Pokémon details on Serebii. Progress stored on this device.
+        Data from PokeAPI. Progress stored on this device.
       </footer>
 
       {adding && <AddGameModal onClose={() => setAdding(false)} />}

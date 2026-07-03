@@ -1,3 +1,4 @@
+import { MapPin } from "lucide-react"
 import { cn } from "../lib/cn"
 import { TYPE_COLORS } from "../lib/typeColors"
 import type { CatchStatus, Pokemon } from "../types"
@@ -101,9 +102,11 @@ export function PokemonCard({ pokemon, regionalNumber, status, onCycle, onLocati
       <button
         type="button"
         onClick={onLocation}
-        className="relative z-20 mt-1 text-[10px] text-sky-400/80 hover:text-sky-300"
+        aria-label={`${cap(pokemon.name)} encounters`}
+        title="Encounters"
+        className="absolute bottom-1 right-1 z-20 rounded p-1.5 text-white/40 opacity-0 transition hover:text-sky-300 focus:opacity-100 focus:text-sky-300 focus:outline-none group-hover:opacity-100"
       >
-        Location
+        <MapPin className="size-3.5" />
       </button>
     </div>
   )

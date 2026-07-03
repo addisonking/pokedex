@@ -1,3 +1,4 @@
+import { MapPin } from "lucide-react"
 import { cn } from "../lib/cn"
 import { TYPE_COLORS } from "../lib/typeColors"
 import type { GridEntry } from "../types"
@@ -64,9 +65,11 @@ export function PokemonList({ entries, onCycle, onLocation }: Props) {
                 event.stopPropagation()
                 onLocation(e.pokemon.id)
               }}
-              className="shrink-0 text-xs text-sky-400/80 hover:text-sky-300"
+              aria-label={`${cap(e.pokemon.name)} encounters`}
+              title="Encounters"
+              className="shrink-0 rounded p-1.5 text-white/40 opacity-0 transition hover:text-sky-300 focus:opacity-100 focus:text-sky-300 group-hover:opacity-100"
             >
-              Location
+              <MapPin className="size-4" />
             </button>
           </div>
         )
