@@ -8,6 +8,14 @@ import type { DexData } from "./gen1"
 // bits LSB-first, max 649
 
 const COPY_SIZE = 0x40000
+// PlayerData block (0x19400 in both BW and B2W2) stores a game-version byte at 0x1F
+const VERSION_OFFSET = 0x19400 + 0x1f
+const VERSIONS: Record<number, string> = {
+  20: "white",
+  21: "black",
+  22: "white-2",
+  23: "black-2",
+}
 const MAX_ID = 649
 const BIT_REGION = 0x54
 
@@ -111,7 +119,7 @@ export function parseGen5(buf: Uint8Array): (DexData & { version: string }) | nu
   return {
     caught: readBits(buf, dexOff + 0x08),
     seen: readSeen(buf, dexOff),
-    version: cfg.defaultVersion,
+    version: VERSIONS[buf[copyBase + VERSION_OFFSET]] ?? cfg.defaultVersion,
   }
 }
 
