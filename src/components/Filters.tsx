@@ -23,6 +23,8 @@ type Props = {
   onSort: (v: SortKey) => void
   viewMode: ViewMode
   onViewMode: (v: ViewMode) => void
+  byArea: boolean
+  onToggleByArea: () => void
   hideMythical: boolean
   onToggleMythical: () => void
 }
@@ -52,6 +54,8 @@ export function Filters({
   onSort,
   viewMode,
   onViewMode,
+  byArea,
+  onToggleByArea,
   hideMythical,
   onToggleMythical,
 }: Props) {
@@ -130,10 +134,22 @@ export function Filters({
         <ToggleGroupItem value="list" aria-label="List view">
           <List />
         </ToggleGroupItem>
-        <ToggleGroupItem value="areas" aria-label="Areas view">
-          <MapPin />
-        </ToggleGroupItem>
       </ToggleGroup>
+      <button
+        type="button"
+        onClick={onToggleByArea}
+        aria-pressed={byArea}
+        title="Group by location"
+        className={cn(
+          "flex items-center gap-1.5 rounded border px-3 py-1.5 text-sm transition",
+          byArea
+            ? "border-sky-600 bg-sky-600/20 text-sky-300"
+            : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10",
+        )}
+      >
+        <MapPin className="size-4" />
+        Areas
+      </button>
     </div>
   )
 }

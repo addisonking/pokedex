@@ -137,6 +137,7 @@ export function PlaythroughTracker() {
   const [dexView, setDexView] = useState<DexView>("regional")
   const [sort, setSort] = useState<SortKey>("dex")
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
+  const [byArea, setByArea] = useState(false)
   const [hideMythical, setHideMythical] = useState(false)
   const [rangeText, setRangeText] = useState("")
   const [setupStatus, setSetupStatus] = useState<CatchStatus>(2)
@@ -154,7 +155,7 @@ export function PlaythroughTracker() {
   )
 
   useEffect(() => {
-    if (viewMode !== "areas" || !version) return
+    if (!byArea || !version) return
     let cancelled = false
     setEncounters(null)
     loadEncounters(version).then((map) => {
@@ -163,10 +164,10 @@ export function PlaythroughTracker() {
     return () => {
       cancelled = true
     }
-  }, [viewMode, version])
+  }, [byArea, version])
 
   const areas = useMemo(() => {
-    if (viewMode !== "areas" || !encounters) return []
+    if (!byArea || !encounters) return []
     // Search is applied per-area below (matching location OR pokémon), so
     // build the entry pool without it.
     const pool = buildEntries(game, dexView, mode, "", type, status, sort, hideMythical, state)
@@ -186,7 +187,7 @@ export function PlaythroughTracker() {
       .filter((a) => a.entries.length > 0)
     out.sort((a, b) => b.entries.length - a.entries.length || a.loc.localeCompare(b.loc))
     return out
-  }, [viewMode, encounters, game, dexView, mode, search, type, status, sort, hideMythical, state])
+  }, [byArea, encounters, game, dexView, mode, search, type, status, sort, hideMythical, state])
 
   if (!playthrough || !game) {
     return (
@@ -475,15 +476,18 @@ export function PlaythroughTracker() {
           onSort={setSort}
           viewMode={viewMode}
           onViewMode={setViewMode}
+          byArea={byArea}
+          onToggleByArea={() => setByArea((v) => !v)}
           hideMythical={hideMythical}
           onToggleMythical={() => setHideMythical((v) => !v)}
         />
       </div>
 
-      {viewMode === "areas" ? (
+      {byArea ? (
         <AreaView
           areas={areas}
           loading={encounters == null}
+          viewMode={viewMode}
           onCycle={(pid) => cycle(playthrough.id, pid)}
           onLocation={(pid) => {
             for (const a of areas) {

@@ -1,11 +1,13 @@
 import { MapPin } from "lucide-react"
 import { cn } from "../lib/cn"
 import { conditionLabel, methodLabel } from "../lib/encounters"
-import type { Area, EncounterRow } from "../types"
+import type { Area, EncounterRow, ViewMode } from "../types"
+import { PokemonCard } from "./PokemonCard"
 
 type Props = {
   areas: Area[]
   loading: boolean
+  viewMode: ViewMode
   onCycle: (pokemonId: number) => void
   onLocation: (pokemonId: number) => void
 }
@@ -16,7 +18,7 @@ function cap(s: string): string {
 
 const STATUS_LABEL: Record<number, string> = { 0: "Not seen", 1: "Seen", 2: "Caught" }
 
-export function AreaView({ areas, loading, onCycle, onLocation }: Props) {
+export function AreaView({ areas, loading, viewMode, onCycle, onLocation }: Props) {
   if (loading) {
     return <div className="py-10 text-center text-muted-foreground">Loading encounters…</div>
   }
@@ -38,51 +40,66 @@ export function AreaView({ areas, loading, onCycle, onLocation }: Props) {
                 {area.entries.length} needed
               </span>
             </div>
-            {area.entries.map(({ entry, rows }) => {
-              const bar = entry.status === 1 ? "bg-amber-400" : "bg-transparent"
-              return (
-                <div
-                  key={entry.pokemon.id}
-                  className="group flex items-center gap-2 border-b border-border bg-card px-2 py-1.5 transition last:border-b-0 hover:bg-accent"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onCycle(entry.pokemon.id)}
-                    aria-label={`${cap(entry.pokemon.name)} — ${STATUS_LABEL[entry.status]}`}
-                    title={STATUS_LABEL[entry.status]}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            {viewMode === "grid" ? (
+              <div className="grid grid-cols-3 gap-2 p-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+                {area.entries.map(({ entry }) => (
+                  <PokemonCard
+                    key={entry.pokemon.id}
+                    pokemon={entry.pokemon}
+                    regionalNumber={entry.regionalNumber}
+                    status={entry.status}
+                    onCycle={() => onCycle(entry.pokemon.id)}
+                    onLocation={() => onLocation(entry.pokemon.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              area.entries.map(({ entry, rows }) => {
+                const bar = entry.status === 1 ? "bg-amber-400" : "bg-transparent"
+                return (
+                  <div
+                    key={entry.pokemon.id}
+                    className="group flex items-center gap-2 border-b border-border bg-card px-2 py-1.5 transition last:border-b-0 hover:bg-accent"
                   >
-                    <span className={cn("h-7 w-1 shrink-0 rounded-full", bar)} />
-                    <img
-                      src={`/sprites/${entry.pokemon.id}.png`}
-                      alt=""
-                      loading="lazy"
-                      className="size-7 shrink-0 object-contain"
-                    />
-                    <span className="w-24 shrink-0 truncate text-sm font-medium">
-                      {cap(entry.pokemon.name)}
-                    </span>
-                    <span className="flex min-w-0 flex-wrap items-center gap-1">
-                      {rows.map((r, i) => (
-                        <RowChip key={`${r.method}-${i}`} row={r} />
-                      ))}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onLocation(entry.pokemon.id)
-                    }}
-                    aria-label={`${cap(entry.pokemon.name)} encounters`}
-                    title="Encounters"
-                    className="shrink-0 rounded p-1.5 text-white/40 opacity-0 transition hover:text-sky-300 focus:opacity-100 focus:text-sky-300 group-hover:opacity-100"
-                  >
-                    <MapPin className="size-4" />
-                  </button>
-                </div>
-              )
-            })}
+                    <button
+                      type="button"
+                      onClick={() => onCycle(entry.pokemon.id)}
+                      aria-label={`${cap(entry.pokemon.name)} — ${STATUS_LABEL[entry.status]}`}
+                      title={STATUS_LABEL[entry.status]}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    >
+                      <span className={cn("h-7 w-1 shrink-0 rounded-full", bar)} />
+                      <img
+                        src={`/sprites/${entry.pokemon.id}.png`}
+                        alt=""
+                        loading="lazy"
+                        className="size-7 shrink-0 object-contain"
+                      />
+                      <span className="w-24 shrink-0 truncate text-sm font-medium">
+                        {cap(entry.pokemon.name)}
+                      </span>
+                      <span className="flex min-w-0 flex-wrap items-center gap-1">
+                        {rows.map((r, i) => (
+                          <RowChip key={`${r.method}-${i}`} row={r} />
+                        ))}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onLocation(entry.pokemon.id)
+                      }}
+                      aria-label={`${cap(entry.pokemon.name)} encounters`}
+                      title="Encounters"
+                      className="shrink-0 rounded p-1.5 text-white/40 opacity-0 transition hover:text-sky-300 focus:opacity-100 focus:text-sky-300 group-hover:opacity-100"
+                    >
+                      <MapPin className="size-4" />
+                    </button>
+                  </div>
+                )
+              })
+            )}
           </div>
         )
       })}
