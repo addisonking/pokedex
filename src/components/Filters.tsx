@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { LayoutGrid, List } from "lucide-react"
+import { LayoutGrid, List, MapPin } from "lucide-react"
 import { cn } from "../lib/cn"
 import { ALL_TYPES } from "../lib/typeColors"
 import type { FilterStatus, SortKey, TrackerMode, ViewMode } from "../types"
@@ -129,6 +129,9 @@ export function Filters({
         </ToggleGroupItem>
         <ToggleGroupItem value="list" aria-label="List view">
           <List />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="areas" aria-label="Areas view">
+          <MapPin />
         </ToggleGroupItem>
       </ToggleGroup>
     </div>

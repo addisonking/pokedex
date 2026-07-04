@@ -22,7 +22,7 @@ export type CatchStatus = 0 | 1 | 2 // unseen / seen / caught
 export type TrackerMode = "caught" | "seen"
 export type DexView = "regional" | "national"
 export type SortKey = "dex" | "name" | "type" | "uncaught"
-export type ViewMode = "grid" | "list"
+export type ViewMode = "grid" | "list" | "areas"
 
 export type Playthrough = {
   id: string // crypto.randomUUID()
@@ -68,3 +68,6 @@ export type GridEntry = {
   regionalNumber?: number
   status: CatchStatus // mode-adjusted for display (seen→0 in caught mode)
 }
+
+export type AreaEntry = { entry: GridEntry; rows: EncounterRow[] }
+export type Area = { loc: string; entries: AreaEntry[] }

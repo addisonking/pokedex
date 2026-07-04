@@ -1,6 +1,6 @@
 import { POKEMON_BY_ID } from "../data"
 import evolutionsRaw from "../data/evolutions.json"
-import type { Evolution, VersionEncounters } from "../types"
+import type { Area, EncounterRow, Evolution, GridEntry, VersionEncounters } from "../types"
 
 const evolutions = evolutionsRaw as Record<string, Evolution>
 
@@ -17,6 +17,37 @@ export function loadEncounters(version: string): Promise<VersionEncounters> {
     : Promise.resolve({})
   cache[version] = p
   return p
+}
+
+export function groupByArea(map: VersionEncounters, entries: GridEntry[]): Area[] {
+  const byLoc = new Map<string, Map<number, { entry: GridEntry; rows: EncounterRow[] }>>()
+  for (const entry of entries) {
+    const rows = map[String(entry.pokemon.id)]
+    if (!rows) continue
+    for (const row of rows) {
+      let loc = byLoc.get(row.loc)
+      if (!loc) {
+        loc = new Map()
+        byLoc.set(row.loc, loc)
+      }
+      let ae = loc.get(entry.pokemon.id)
+      if (!ae) {
+        ae = { entry, rows: [] }
+        loc.set(entry.pokemon.id, ae)
+      }
+      ae.rows.push(row)
+    }
+  }
+  const out: Area[] = []
+  for (const [loc, byId] of byLoc) {
+    const areaEntries = [...byId.values()]
+    for (const ae of areaEntries) {
+      ae.rows.sort((a, b) => a.method.localeCompare(b.method) || a.min - b.min)
+    }
+    areaEntries.sort((a, b) => a.entry.pokemon.id - b.entry.pokemon.id)
+    out.push({ loc, entries: areaEntries })
+  }
+  return out
 }
 
 export const METHOD_LABELS: Record<string, string> = {

@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { toast } from "sonner"
+import { AreaView } from "../components/AreaView"
 import { EncounterDialog } from "../components/EncounterDialog"
 import { Filters } from "../components/Filters"
 import { PokemonGrid } from "../components/PokemonGrid"
@@ -8,6 +9,7 @@ import { PokemonList } from "../components/PokemonList"
 import { ProgressBar } from "../components/ProgressBar"
 import { GAMES_BY_ID, GEN_CAP, MYTHICAL_IDS, POKEMON_BY_ID, VERSION_LABELS } from "../data"
 import { cn } from "../lib/cn"
+import { groupByArea, loadEncounters } from "../lib/encounters"
 import { countCaught } from "../lib/progress"
 import { importSave } from "../lib/save-parser"
 import { useProgress } from "../lib/storage"
@@ -21,6 +23,7 @@ import type {
   SortKey,
   TrackerMode,
   TrackerState,
+  VersionEncounters,
   ViewMode,
 } from "../types"
 
@@ -118,6 +121,7 @@ export function PlaythroughTracker() {
   const [setupStatus, setSetupStatus] = useState<CatchStatus>(2)
   const [rangeMsg, setRangeMsg] = useState<string | null>(null)
   const [locationEntry, setLocationEntry] = useState<GridEntry | null>(null)
+  const [encounters, setEncounters] = useState<VersionEncounters | null>(null)
 
   const state = playthrough ? progress[playthrough.id] : undefined
   const mode: TrackerMode = playthrough?.mode ?? "seen"
@@ -127,6 +131,41 @@ export function PlaythroughTracker() {
     () => buildEntries(game, dexView, mode, search, type, status, sort, hideMythical, state),
     [game, dexView, mode, search, type, status, sort, hideMythical, state],
   )
+
+  useEffect(() => {
+    if (viewMode !== "areas" || !version) return
+    let cancelled = false
+    setEncounters(null)
+    loadEncounters(version).then((map) => {
+      if (!cancelled) setEncounters(map)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [viewMode, version])
+
+  const areas = useMemo(() => {
+    if (viewMode !== "areas" || !encounters) return []
+    // Search is applied per-area below (matching location OR pokémon), so
+    // build the entry pool without it.
+    const pool = buildEntries(game, dexView, mode, "", type, status, sort, hideMythical, state)
+    const q = search.trim().toLowerCase()
+    const matchesPokemon = (e: GridEntry) =>
+      e.pokemon.name.includes(q) ||
+      String(e.pokemon.id).padStart(3, "0").includes(q) ||
+      (e.regionalNumber != null && String(e.regionalNumber).includes(q))
+    const out = groupByArea(encounters, pool)
+      .map((a) => {
+        let kept = a.entries.filter((e) => e.entry.status !== 2)
+        if (q && !a.loc.toLowerCase().includes(q)) {
+          kept = kept.filter((e) => matchesPokemon(e.entry))
+        }
+        return { ...a, entries: kept }
+      })
+      .filter((a) => a.entries.length > 0)
+    out.sort((a, b) => b.entries.length - a.entries.length || a.loc.localeCompare(b.loc))
+    return out
+  }, [viewMode, encounters, game, dexView, mode, search, type, status, sort, hideMythical, state])
 
   if (!playthrough || !game) {
     return (
@@ -420,7 +459,22 @@ export function PlaythroughTracker() {
         />
       </div>
 
-      {viewMode === "list" ? (
+      {viewMode === "areas" ? (
+        <AreaView
+          areas={areas}
+          loading={encounters == null}
+          onCycle={(pid) => cycle(playthrough.id, pid)}
+          onLocation={(pid) => {
+            for (const a of areas) {
+              const e = a.entries.find((x) => x.entry.pokemon.id === pid)
+              if (e) {
+                setLocationEntry(e.entry)
+                return
+              }
+            }
+          }}
+        />
+      ) : viewMode === "list" ? (
         <PokemonList
           entries={entries}
           onCycle={(pid) => cycle(playthrough.id, pid)}
