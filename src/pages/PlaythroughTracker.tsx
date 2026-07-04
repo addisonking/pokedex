@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { AreaView } from "../components/AreaView"
 import { EncounterDialog } from "../components/EncounterDialog"
@@ -7,6 +7,17 @@ import { Filters } from "../components/Filters"
 import { PokemonGrid } from "../components/PokemonGrid"
 import { PokemonList } from "../components/PokemonList"
 import { ProgressBar } from "../components/ProgressBar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog"
 import { GAMES_BY_ID, GEN_CAP, MYTHICAL_IDS, POKEMON_BY_ID, VERSION_LABELS } from "../data"
 import { cn } from "../lib/cn"
 import { groupByArea, loadEncounters } from "../lib/encounters"
@@ -105,7 +116,17 @@ function buildEntries(
 
 export function PlaythroughTracker() {
   const { id = "" } = useParams()
-  const { playthroughs, progress, setMode, completeSetup, cycle, bulkSet, loadSave } = useProgress()
+  const {
+    playthroughs,
+    progress,
+    setMode,
+    completeSetup,
+    cycle,
+    bulkSet,
+    loadSave,
+    removePlaythrough,
+  } = useProgress()
+  const navigate = useNavigate()
   const playthrough = playthroughs.find((p) => p.id === id)
   const game = playthrough ? GAMES_BY_ID.get(playthrough.gameId) : undefined
   const saveRef = useRef<HTMLInputElement>(null)
@@ -501,7 +522,36 @@ export function PlaythroughTracker() {
         onClose={() => setLocationEntry(null)}
       />
 
-      <p className="mt-6 text-xs text-white/30">Tracking {activeIds.length} Pokémon</p>
+      <div className="mt-6 flex items-center justify-between">
+        <p className="text-xs text-white/30">Tracking {activeIds.length} Pokémon</p>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button type="button" className="text-xs text-white/30 hover:text-red-400">
+              Delete playthrough
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete "{playthrough.name}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                All progress for this playthrough will be permanently removed. This cannot be
+                undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  removePlaythrough(playthrough.id)
+                  navigate("/")
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   )
 }

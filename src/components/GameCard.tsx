@@ -10,7 +10,7 @@ type Props = {
 }
 
 export function GameCard({ playthrough }: Props) {
-  const { progress, removePlaythrough } = useProgress()
+  const { progress } = useProgress()
   const game = GAMES_BY_ID.get(playthrough.gameId)
   const state = progress[playthrough.id]
 
@@ -29,21 +29,7 @@ export function GameCard({ playthrough }: Props) {
       to={`/playthrough/${playthrough.id}`}
       className="group relative block rounded-xl border border-white/10 bg-white/5 p-4 transition hover:border-white/25 hover:bg-white/10"
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault()
-          if (window.confirm(`Delete "${playthrough.name}"? This cannot be undone.`)) {
-            removePlaythrough(playthrough.id)
-          }
-        }}
-        aria-label="Delete playthrough"
-        title="Delete"
-        className="absolute right-2 top-2 z-10 rounded px-2 py-0.5 text-white/40 hover:bg-white/10 hover:text-red-400"
-      >
-        ✕
-      </button>
-      <div className="mb-3 pr-6">
+      <div className="mb-3">
         <div className="text-[11px] uppercase tracking-wide text-white/40">
           {VERSION_LABELS[playthrough.version]} · Gen {game.gen}
         </div>
