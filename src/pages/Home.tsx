@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { AddGameModal } from "../components/AddGameModal"
@@ -12,7 +12,9 @@ export function Home() {
   const navigate = useNavigate()
   const { playthroughs, addPlaythrough, bulkSet, completeSetup } = useProgress()
   const [adding, setAdding] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const saveRef = useRef<HTMLInputElement>(null)
+  const dragDepth = useRef(0)
 
   function handleSaveImport(file: File) {
     const reader = new FileReader()
@@ -37,8 +39,45 @@ export function Home() {
     reader.readAsArrayBuffer(file)
   }
 
+  useEffect(() => {
+    const enter = (e: DragEvent) => {
+      e.preventDefault()
+      dragDepth.current++
+      setDragging(true)
+    }
+    const over = (e: DragEvent) => e.preventDefault()
+    const leave = () => {
+      dragDepth.current--
+      if (dragDepth.current <= 0) {
+        dragDepth.current = 0
+        setDragging(false)
+      }
+    }
+    const drop = (e: DragEvent) => {
+      e.preventDefault()
+      dragDepth.current = 0
+      setDragging(false)
+      for (const f of e.dataTransfer?.files ?? []) handleSaveImport(f)
+    }
+    window.addEventListener("dragenter", enter)
+    window.addEventListener("dragover", over)
+    window.addEventListener("dragleave", leave)
+    window.addEventListener("drop", drop)
+    return () => {
+      window.removeEventListener("dragenter", enter)
+      window.removeEventListener("dragover", over)
+      window.removeEventListener("dragleave", leave)
+      window.removeEventListener("drop", drop)
+    }
+  })
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      {dragging && (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center border-4 border-dashed border-brand/60 bg-surface/80">
+          <p className="text-lg font-medium text-white/80">Drop .sav file to import</p>
+        </div>
+      )}
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
