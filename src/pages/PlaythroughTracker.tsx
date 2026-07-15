@@ -21,7 +21,7 @@ import {
 import { GAMES_BY_ID, GEN_CAP, MYTHICAL_IDS, POKEMON_BY_ID, VERSION_LABELS } from "../data"
 import { cn } from "../lib/cn"
 import { groupByArea, loadEncounters } from "../lib/encounters"
-import { countCaught } from "../lib/progress"
+import { countCaught, countSeen } from "../lib/progress"
 import { importSave } from "../lib/save-parser"
 import { useProgress } from "../lib/storage"
 import type {
@@ -205,6 +205,7 @@ export function PlaythroughTracker() {
   const activeIds =
     dexView === "regional" ? regionalIds : Array.from({ length: cap }, (_, i) => i + 1)
   const caughtCount = countCaught(state, activeIds)
+  const seenCount = mode === "seen" ? countSeen(state, activeIds) : undefined
   const filteredCaught = entries.filter((e) => e.status === 2).length
 
   const handleModeChange = (m: TrackerMode) => {
@@ -455,7 +456,7 @@ export function PlaythroughTracker() {
             Pokémon.
           </p>
         )}
-        <ProgressBar caught={caughtCount} total={activeIds.length} />
+        <ProgressBar caught={caughtCount} total={activeIds.length} seen={seenCount} />
         {status !== "all" && (
           <p className="mt-1 text-xs text-white/40">
             {filteredCaught} / {entries.length} shown are caught

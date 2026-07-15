@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { GAMES_BY_ID, GEN_CAP, VERSION_LABELS } from "../data"
-import { countCaught } from "../lib/progress"
+import { countCaught, countSeen } from "../lib/progress"
 import { useProgress } from "../lib/storage"
 import type { Playthrough } from "../types"
 import { ProgressBar } from "./ProgressBar"
@@ -22,6 +22,9 @@ export function GameCard({ playthrough }: Props) {
   const nationalIds = Array.from({ length: nationalTotal }, (_, i) => i + 1)
   const regionalCaught = countCaught(state, regionalIds)
   const nationalCaught = countCaught(state, nationalIds)
+  const tracksSeen = playthrough.mode === "seen"
+  const regionalSeen = tracksSeen ? countSeen(state, regionalIds) : undefined
+  const nationalSeen = tracksSeen ? countSeen(state, nationalIds) : undefined
   const collapse = regionalTotal === nationalTotal
 
   return (
@@ -37,16 +40,16 @@ export function GameCard({ playthrough }: Props) {
         <div className="text-xs text-white/50">{game.description}</div>
       </div>
       {collapse ? (
-        <ProgressBar caught={regionalCaught} total={regionalTotal} />
+        <ProgressBar caught={regionalCaught} total={regionalTotal} seen={regionalSeen} />
       ) : (
         <div className="space-y-2">
           <div>
             <div className="mb-0.5 text-[11px] uppercase tracking-wide text-white/40">Regional</div>
-            <ProgressBar caught={regionalCaught} total={regionalTotal} />
+            <ProgressBar caught={regionalCaught} total={regionalTotal} seen={regionalSeen} />
           </div>
           <div>
             <div className="mb-0.5 text-[11px] uppercase tracking-wide text-white/40">National</div>
-            <ProgressBar caught={nationalCaught} total={nationalTotal} />
+            <ProgressBar caught={nationalCaught} total={nationalTotal} seen={nationalSeen} />
           </div>
         </div>
       )}
